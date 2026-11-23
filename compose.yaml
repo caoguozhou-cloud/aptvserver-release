@@ -1,0 +1,73 @@
+# APTVserver 1.0.0
+#
+# 用法：在 NAS 的 Docker / Compose 界面新建项目，粘贴这份文件，改好标了「← 改」的三处，然后启动。
+# 改之前先在 NAS 文件管理里建好「服务数据」文件夹，并确认它属于你自己的账号。
+# 详细说明见 README.md。
+
+services:
+  aptvserver:
+    # 国内用这一行；在国外或阿里云拉不动时，换成下面注释掉的 ghcr.io 地址。
+    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.0.0
+    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.0.0
+    restart: unless-stopped
+    init: true
+    # ← 改：你的 NAS 账号的 UID:GID（数据文件夹的主人）。飞牛首个账号的 UID 通常是 1000，群晖常见 1026:100。
+    #   不确定就在 NAS 终端运行 id 查看。不要填 0（root）。
+    user: "1000:1000"
+    ports:
+      - "8098:8098"
+    environment:
+      APTV_DATA_DIR: /data
+      APTV_MEDIA_ROOT: /media
+    volumes:
+      # ← 改：放电影/剧集的文件夹。默认只读，APTVserver 不会修改你的影片。
+      #   要用「整理」「文件管理」等写入功能，把 read_only 改为 false。
+      - type: bind
+        source: /vol1/1000/影视
+        target: /media
+        read_only: true
+        bind:
+          create_host_path: false
+      # ← 改：服务数据文件夹（账号、数据库、封面、预览都在这里）。必须在媒体文件夹之外。
+      - type: bind
+        source: /vol1/1000/docker/aptvserver
+        target: /data
+        bind:
+          create_host_path: false
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    pids_limit: 128
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8098/healthz', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # 让 iPhone / Apple TV 自动发现这台服务器。删掉这一段也能用，只是要在 App 里手动输入地址或扫码。
+  aptvserver-discovery:
+    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.0.0
+    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.0.0
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"   # ← 与上面保持一致
+    network_mode: host
+    command: ["python", "-m", "aptvserver.lan_discovery"]
+    depends_on:
+      - aptvserver
+    environment:
+      APTV_DISCOVERY_BIND: 0.0.0.0
+      APTV_DISCOVERY_PORT: "8098"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 80m
+    pids_limit: 32
