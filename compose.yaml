@@ -1,19 +1,17 @@
-# APTVserver 1.0.0
+# APTVserver 1.0.1
 #
-# 用法：在 NAS 的 Docker / Compose 界面新建项目，粘贴这份文件，改好标了「← 改」的三处，然后启动。
-# 改之前先在 NAS 文件管理里建好「服务数据」文件夹，并确认它属于你自己的账号。
+# 用法：先在 NAS 文件管理里用自己的账号新建一个「服务数据」文件夹；
+# 再在 Docker / Compose 界面新建项目，粘贴这份文件，改好标了「← 改」的两处路径，然后启动。
+# 服务会自动以这个文件夹的主人（也就是你）的身份运行，不需要填 UID/GID。
 # 详细说明见 README.md。
 
 services:
   aptvserver:
     # 国内用这一行；在国外或阿里云拉不动时，换成下面注释掉的 ghcr.io 地址。
-    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.0.0
-    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.0.0
+    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.0.1
+    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.0.1
     restart: unless-stopped
     init: true
-    # ← 改：你的 NAS 账号的 UID:GID（数据文件夹的主人）。飞牛首个账号的 UID 通常是 1000，群晖常见 1026:100。
-    #   不确定就在 NAS 终端运行 id 查看。不要填 0（root）。
-    user: "1000:1000"
     ports:
       - "8098:8098"
     environment:
@@ -39,6 +37,9 @@ services:
       - /tmp:size=64m,mode=1777
     cap_drop:
       - ALL
+    cap_add:            # 仅用于启动时切换到数据文件夹主人的身份，切换后不保留
+      - SETUID
+      - SETGID
     security_opt:
       - no-new-privileges:true
     mem_limit: 1g
@@ -52,11 +53,10 @@ services:
 
   # 让 iPhone / Apple TV 自动发现这台服务器。删掉这一段也能用，只是要在 App 里手动输入地址或扫码。
   aptvserver-discovery:
-    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.0.0
-    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.0.0
+    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.0.1
+    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.0.1
     restart: unless-stopped
     init: true
-    user: "1000:1000"   # ← 与上面保持一致
     network_mode: host
     command: ["python", "-m", "aptvserver.lan_discovery"]
     depends_on:
@@ -67,6 +67,9 @@ services:
     read_only: true
     cap_drop:
       - ALL
+    cap_add:            # 仅用于启动时切换到无权限的 nobody 账号，切换后不保留
+      - SETUID
+      - SETGID
     security_opt:
       - no-new-privileges:true
     mem_limit: 80m
