@@ -1,69 +1,132 @@
-# APTVserver 1.1.0
+# ============================================================================
+# APTVserver 1.1.0 —— 部署文件（带说明，照着改就行）
+# ============================================================================
 #
-# 用法：先在 NAS 文件管理里用自己的账号新建一个「服务数据」文件夹；
-# 再在 Docker / Compose 界面新建项目，粘贴这份文件，改好标了「← 改」的两处路径，然后启动。
-# 服务会自动以这个文件夹的主人（也就是你）的身份运行，不需要填 UID/GID。
-# 详细说明见 README.md。
+# 【你只需要改 3 处，文件里都标了「← 改」】
+#   ① 影片文件夹的路径（放电影、剧集、音乐的那个文件夹）
+#   ② 服务数据文件夹的路径（账号、观看记录、封面都存在这里）
+#   ③ 想让它整理文件时，把影片文件夹的 read_only 改成 false（不想让它动文件就别改）
+# 其余保持原样即可。
+#
+# 【开始之前】先在 NAS 的文件管理里，用你自己的账号新建一个空文件夹当「服务数据文件夹」，
+#   比如 docker/aptvserver。不要放进影片文件夹里面，也不要用系统账号创建。
+#
+# 【路径怎么写】写 NAS 上的真实路径：
+#   飞牛 fnOS ：/vol1/1000/影视           （文件管理里右键「详细信息」可查看）
+#   群晖 DSM  ：/volume1/video            （文件管理 File Station 里右键「属性」可查看）
+#   其他      ：宿主机上的绝对路径，例如 /mnt/data/movies
+#
+# 【升级】只改下面两处 image: 末尾的版本号，然后重新部署（飞牛点「重建」，群晖点「构建」）。
+#   账号、观看记录、封面都在服务数据文件夹里，升级不会丢。我们只发固定版本号，不发 latest，
+#   所以不会在你没注意时被自动升级。详细说明见 README.md。
 
 services:
+  # ---------------------------------------------------------------------------
+  # 主服务：管理台、媒体库、预览、给 iPhone / Apple TV 提供内容
+  # ---------------------------------------------------------------------------
   aptvserver:
-    # 国内用这一行；在国外或阿里云拉不动时，换成下面注释掉的 ghcr.io 地址。
+    # 镜像地址。国内用这一行；在国外，或者阿里云拉不动时，
+    # 把这一行注释掉，换成下面 ghcr.io 那一行（两个地址里是同一份镜像）。
     image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.1.0
     # image: ghcr.io/caoguozhou-cloud/aptvserver:1.1.0
+
+    # 崩溃或 NAS 重启后自动拉起；你手动停止的不会被自动拉起。
     restart: unless-stopped
+    # 用一个小的初始化进程管理子进程，避免残留僵尸进程。保持原样。
     init: true
+
     ports:
+      # 左边是 NAS 对外的端口，右边是容器里的端口（不要改右边）。
+      # 打开 http://NAS的IP:8098/admin 进入管理台。
+      # 8098 被别的软件占用时，只改左边，比如 "18098:8098"，访问地址也换成对应端口。
       - "8098:8098"
+
     environment:
+      # 容器里的数据位置和媒体位置，对应下面两个挂载的右边。保持原样。
       APTV_DATA_DIR: /data
       APTV_MEDIA_ROOT: /media
+      # 想关闭预览自动生成？不需要改这里，在管理台「预览」页顶部有开关。
+
     volumes:
-      # ← 改：放电影/剧集的文件夹。默认只读，APTVserver 不会修改你的影片。
-      #   要用「整理」「文件管理」等写入功能，把 read_only 改为 false。
+      # ← 改 ①：放电影 / 剧集 / 音乐的文件夹。
+      #   source 写 NAS 上的真实路径；target 是容器里的位置，不要改。
+      #   read_only: true  表示只读：APTVserver 只读取，绝不会改动你的影片（最安全，默认）。
+      #   read_only: false 表示可写：要使用「自动整理」「整理到新位置」「文件管理」，
+      #                    或「把海报和资料写到影片旁边」时才需要。写入前请先备份重要文件。
+      #   create_host_path: false 表示路径不存在时报错，而不是自动新建一个空文件夹，
+      #                    这样路径写错了你马上能发现。保持原样。
       - type: bind
         source: /vol1/1000/影视
         target: /media
         read_only: true
         bind:
           create_host_path: false
-      # ← 改：服务数据文件夹（账号、数据库、封面、预览都在这里）。必须在媒体文件夹之外。
+
+      # ← 改 ②：服务数据文件夹（账号、数据库、封面、预览、自动备份都在这里）。
+      #   必须在影片文件夹之外，必须是你自己的账号创建的文件夹。
+      #   这个文件夹不要删除，删了账号和观看记录就没了。
       - type: bind
         source: /vol1/1000/docker/aptvserver
         target: /data
         bind:
           create_host_path: false
+
+    # ---- 下面是安全设置，一般不用动 ----
+    # 容器自己的系统文件设为只读，程序被攻破也改不了系统。
     read_only: true
+    # 给程序一小块内存里的临时空间（重启就清空），上面的只读设置才不影响运行。
     tmpfs:
       - /tmp:size=64m,mode=1777
+    # 去掉容器的所有特权，再只加回两项。
     cap_drop:
       - ALL
-    cap_add:            # 仅用于启动时切换到数据文件夹主人的身份，切换后不保留
+    cap_add:            # 仅用于启动时切换到数据文件夹主人的身份（所以不需要你填 UID/GID），切换后不保留
       - SETUID
       - SETGID
+    # 禁止容器内的程序再提升权限。
     security_opt:
       - no-new-privileges:true
+
+    # ---- 资源限制：防止它占满 NAS ----
+    # 内存上限 1GB。片库很大（上万部）或同时生成预览时，可以适当加大，比如 2g。
     mem_limit: 1g
+    # 进程数上限，防止异常时无限创建进程。
     pids_limit: 128
+    # 停止时最多等 20 秒让它存好数据再退出。
     stop_grace_period: 20s
+
+    # 健康检查：每 30 秒问一次服务是否正常。
+    # Docker / Container Manager 里状态显示「健康」就表示可以用了；首次启动要等一会儿。
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8098/healthz', timeout=3).read()"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  # 让 iPhone / Apple TV 自动发现这台服务器。删掉这一段也能用，只是要在 App 里手动输入地址或扫码。
+  # ---------------------------------------------------------------------------
+  # 局域网自动发现：让 iPhone / Apple TV 在「添加来源」里自动看到这台服务器。
+  # 不想要可以整段删掉，只是 App 里要手动输入地址，或在管理台「设备连接」扫码。
+  # 它必须用 host 网络，所以不需要映射端口，也不会占用任何新端口。
+  # ---------------------------------------------------------------------------
   aptvserver-discovery:
+    # 镜像地址和版本号必须和上面的主服务一致，升级时两处一起改。
     image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.1.0
     # image: ghcr.io/caoguozhou-cloud/aptvserver:1.1.0
     restart: unless-stopped
     init: true
+    # host 网络：直接用 NAS 的网络，才能在局域网里广播自己。
     network_mode: host
+    # 运行的是同一个镜像里的另一个小程序，只负责广播。
     command: ["python", "-m", "aptvserver.lan_discovery"]
+    # 先等主服务启动。
     depends_on:
       - aptvserver
     environment:
+      # 广播的地址和端口。端口要和上面主服务对外的端口（ports 左边）一致；
+      # 如果你把 8098 改成了别的，这里也要改成一样的数字。
       APTV_DISCOVERY_BIND: 0.0.0.0
       APTV_DISCOVERY_PORT: "8098"
+    # 同样的安全设置，权限更小。
     read_only: true
     cap_drop:
       - ALL
