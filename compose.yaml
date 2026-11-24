@@ -1,5 +1,5 @@
 # ============================================================================
-# APTVserver 1.1.0 —— 部署文件（带说明，照着改就行）
+# APTVserver 1.2.0 —— 部署文件（带说明，照着改就行）
 # ============================================================================
 #
 # 【你只需要改 3 处，文件里都标了「← 改」】
@@ -27,8 +27,8 @@ services:
   aptvserver:
     # 镜像地址。国内用这一行；在国外，或者阿里云拉不动时，
     # 把这一行注释掉，换成下面 ghcr.io 那一行（两个地址里是同一份镜像）。
-    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.1.0
-    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.1.0
+    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.2.0
+    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.2.0
 
     # 崩溃或 NAS 重启后自动拉起；你手动停止的不会被自动拉起。
     restart: unless-stopped
@@ -110,8 +110,8 @@ services:
   # ---------------------------------------------------------------------------
   aptvserver-discovery:
     # 镜像地址和版本号必须和上面的主服务一致，升级时两处一起改。
-    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.1.0
-    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.1.0
+    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.2.0
+    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.2.0
     restart: unless-stopped
     init: true
     # host 网络：直接用 NAS 的网络，才能在局域网里广播自己。
