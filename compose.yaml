@@ -1,4 +1,4 @@
-# APTVserver 1.0.1
+# APTVserver 1.1.0
 #
 # 用法：先在 NAS 文件管理里用自己的账号新建一个「服务数据」文件夹；
 # 再在 Docker / Compose 界面新建项目，粘贴这份文件，改好标了「← 改」的两处路径，然后启动。
@@ -8,8 +8,8 @@
 services:
   aptvserver:
     # 国内用这一行；在国外或阿里云拉不动时，换成下面注释掉的 ghcr.io 地址。
-    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.0.1
-    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.0.1
+    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.1.0
+    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.1.0
     restart: unless-stopped
     init: true
     ports:
@@ -53,8 +53,8 @@ services:
 
   # 让 iPhone / Apple TV 自动发现这台服务器。删掉这一段也能用，只是要在 App 里手动输入地址或扫码。
   aptvserver-discovery:
-    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.0.1
-    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.0.1
+    image: crpi-407udjr05uywd17r.cn-hangzhou.personal.cr.aliyuncs.com/aptvman/aptvserver:1.1.0
+    # image: ghcr.io/caoguozhou-cloud/aptvserver:1.1.0
     restart: unless-stopped
     init: true
     network_mode: host
